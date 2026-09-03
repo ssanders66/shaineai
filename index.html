@@ -642,6 +642,7 @@
     color:var(--text-dim);
   }
   .form-note.ok{ color:var(--scope); }
+  .form-note.err{ color:#e0685f; }
 
   /* ============ FOOTER ============ */
   /* A fixed dark band, like the hero photo — this is where the actual
@@ -945,6 +946,10 @@
           <p style="color:var(--text-dim); max-width:46ch;">Bookings, collabs, press, or just static &mdash; the request line is open. Leave a message and it reaches the studio directly.</p>
         </div>
         <form id="requestForm">
+          <input type="hidden" name="access_key" value="8e9c4f04-d2a5-4840-8a21-7e42e56bc5a5">
+          <input type="hidden" name="subject" value="New transmission from shaineai.com">
+          <input type="hidden" name="from_name" value="Shaine FM Request Line">
+          <input type="checkbox" name="botcheck" class="hidden" style="display:none;" tabindex="-1" autocomplete="off">
           <div class="field">
             <label for="name">Name</label>
             <input id="name" name="name" type="text" placeholder="Your name" required>
@@ -955,11 +960,11 @@
           </div>
           <div class="field">
             <label for="message">Message</label>
-            <textarea id="message" name="message" placeholder="What's the signal?"></textarea>
+            <textarea id="message" name="message" placeholder="What's the signal?" required></textarea>
           </div>
           <div class="submit-row">
             <button type="submit" class="btn btn-primary" style="border:none; cursor:pointer;">Transmit &rarr;</button>
-            <span class="form-note" id="formNote">Mockup form &mdash; not yet wired to a backend.</span>
+            <span class="form-note" id="formNote">Bookings, collabs, press &mdash; goes straight to the studio inbox.</span>
           </div>
         </form>
       </div>
@@ -1091,15 +1096,41 @@
     }
   });
 
-  /* ---------- mock contact form ---------- */
+  /* ---------- request line form (Web3Forms) ---------- */
   var form = document.getElementById('requestForm');
   var note = document.getElementById('formNote');
   if (form){
     form.addEventListener('submit', function(e){
       e.preventDefault();
-      note.textContent = 'Signal received — thanks. (Mockup only, nothing was actually sent.)';
-      note.classList.add('ok');
-      form.reset();
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      note.classList.remove('ok','err');
+      note.textContent = 'Transmitting…';
+
+      var data = new FormData(form);
+      fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: data
+      })
+      .then(function(res){ return res.json(); })
+      .then(function(result){
+        if (result && result.success){
+          note.textContent = 'Signal received — thanks, I\'ll get back to you soon.';
+          note.classList.add('ok');
+          form.reset();
+        } else {
+          note.textContent = 'Transmission failed — please try again or reach out via a link below.';
+          note.classList.add('err');
+        }
+      })
+      .catch(function(){
+        note.textContent = 'Transmission failed — check your connection and try again.';
+        note.classList.add('err');
+      })
+      .finally(function(){
+        if (btn) btn.disabled = false;
+      });
     });
   }
 })();
